@@ -1,0 +1,515 @@
+あいうえお
+987654321
+123456789
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Othello</title>
+    <style>
+        :root {
+            --board-color: #fbc02d;
+            --cell-border: #f57f17;
+            --bg-color: #f5f5f7;
+            --text-color: #1d1d1f;
+            --black-piece: #1d1d1f;
+            --white-piece: #ffffff;
+            --valid-move-color: rgba(0, 0, 0, 0.15);
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            user-select: none;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .status-panel {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+            padding: 15px 25px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .score-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .score-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #ccc;
+        }
+
+        .score-dot.black { background-color: var(--black-piece); }
+        .score-dot.white { background-color: var(--white-piece); }
+
+        .current-turn {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #f57f17;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            background-color: var(--cell-border);
+            border: 4px solid var(--cell-border);
+            border-radius: 8px;
+            width: 90vw;
+            height: 90vw;
+            max-width: 500px;
+            max-height: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .cell {
+            background-color: var(--board-color);
+            border: 1px solid var(--cell-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .cell:hover {
+            background-color: #fdd835;
+        }
+
+        /* Valid move indicator */
+        .valid-move::after {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background-color: var(--valid-move-color);
+            border-radius: 50%;
+        }
+
+        /* Piece styling */
+        .piece-container {
+            width: 85%;
+            height: 85%;
+            perspective: 1000px;
+        }
+
+        .piece {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .piece.white {
+            transform: rotateY(180deg);
+        }
+
+        .piece-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 50%;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.3), 0 2px 5px rgba(0,0,0,0.4);
+        }
+
+        .piece-face.black {
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+        }
+
+        .piece-face.white {
+            background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+            transform: rotateY(180deg);
+            border: 1px solid #ccc;
+        }
+
+        .controls {
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            background-color: #0071e3;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        button:hover {
+            background-color: #0077ed;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .message-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .message-box {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .message-box h2 {
+            margin-top: 0;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes placePiece {
+            0% { transform: scale(0); opacity: 0; }
+            70% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Othello</h1>
+
+    <div class="current-turn" id="turn-display">黒の番です</div>
+
+    <div class="status-panel">
+        <div class="score-item">
+            <div class="score-dot black"></div>
+            <span>黒: <span id="black-score">2</span></span>
+        </div>
+        <div class="score-item">
+            <div class="score-dot white"></div>
+            <span>白: <span id="white-score">2</span></span>
+        </div>
+    </div>
+
+    <div class="board" id="board">
+        <!-- Cells will be generated by JS -->
+    </div>
+
+    <div class="controls">
+        <button onclick="game.reset()">リセット</button>
+    </div>
+</div>
+
+<div class="message-overlay" id="overlay">
+    <div class="message-box">
+        <h2 id="result-text">ゲーム終了！</h2>
+        <p id="result-details"></p>
+        <button onclick="game.reset()">もう一度遊ぶ</button>
+    </div>
+</div>
+
+<script>
+    const BLACK = 1;
+    const WHITE = -1;
+    const EMPTY = 0;
+
+    class Othello {
+        constructor() {
+            this.cells = [];
+            this.createBoardElements();
+            this.initBoard();
+            this.render();
+        }
+
+        createBoardElements() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            this.cells = [];
+
+            for (let r = 0; r < 8; r++) {
+                this.cells[r] = [];
+                for (let c = 0; c < 8; c++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    
+                    // Pre-create piece structure
+                    const container = document.createElement('div');
+                    container.className = 'piece-container';
+                    container.style.display = 'none';
+                    
+                    const piece = document.createElement('div');
+                    piece.className = 'piece';
+                    
+                    const front = document.createElement('div');
+                    front.className = 'piece-face black';
+                    
+                    const back = document.createElement('div');
+                    back.className = 'piece-face white';
+                    
+                    piece.appendChild(front);
+                    piece.appendChild(back);
+                    container.appendChild(piece);
+                    cell.appendChild(container);
+                    
+                    boardEl.appendChild(cell);
+                    this.cells[r][c] = { cell, container, piece };
+                }
+            }
+        }
+
+        initBoard() {
+            this.board = Array(8).fill(null).map(() => Array(8).fill(EMPTY));
+            this.board[3][3] = WHITE;
+            this.board[3][4] = BLACK;
+            this.board[4][3] = BLACK;
+            this.board[4][4] = WHITE;
+            this.turn = BLACK;
+            this.isCpuThinking = false;
+        }
+
+        reset() {
+            this.initBoard();
+            document.getElementById('overlay').style.display = 'none';
+            this.render();
+        }
+
+        getValidMoves(player) {
+            const moves = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (this.canPlace(r, c, player).length > 0) {
+                        moves.push({r, c});
+                    }
+                }
+            }
+            return moves;
+        }
+
+        canPlace(row, col, player) {
+            if (this.board[row][col] !== EMPTY) return [];
+
+            const directions = [
+                [-1, -1], [-1, 0], [-1, 1],
+                [0, -1],           [0, 1],
+                [1, -1],  [1, 0],  [1, 1]
+            ];
+            let allFlipped = [];
+
+            for (const [dr, dc] of directions) {
+                let r = row + dr;
+                let c = col + dc;
+                let flippedInDir = [];
+
+                while (r >= 0 && r < 8 && c >= 0 && c < 8 && this.board[r][c] === -player) {
+                    flippedInDir.push({r, c});
+                    r += dr;
+                    c += dc;
+                }
+
+                if (r >= 0 && r < 8 && c >= 0 && c < 8 && this.board[r][c] === player && flippedInDir.length > 0) {
+                    allFlipped = allFlipped.concat(flippedInDir);
+                }
+            }
+            return allFlipped;
+        }
+
+        handleMove(r, c) {
+            if (this.isCpuThinking) return;
+
+            const flipped = this.canPlace(r, c, this.turn);
+            if (flipped.length === 0) return;
+
+            // Place piece with placement animation
+            this.board[r][c] = this.turn;
+            this.animatePlacement(r, c);
+
+            // Flip pieces
+            for (const pos of flipped) {
+                this.board[pos.r][pos.c] = this.turn;
+            }
+
+            this.changeTurn();
+        }
+
+        animatePlacement(r, c) {
+            const { container } = this.cells[r][c];
+            container.style.display = 'block';
+            container.style.animation = 'none';
+            container.offsetHeight; // trigger reflow
+            container.style.animation = 'placePiece 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+        }
+
+        changeTurn() {
+            const nextPlayer = -this.turn;
+            const nextMoves = this.getValidMoves(nextPlayer);
+            
+            if (nextMoves.length > 0) {
+                this.turn = nextPlayer;
+            } else if (this.getValidMoves(this.turn).length > 0) {
+                console.log("Pass");
+            } else {
+                this.render();
+                setTimeout(() => this.gameOver(), 800);
+                return;
+            }
+
+            this.render();
+
+            if (this.turn === WHITE) {
+                this.cpuThink();
+            }
+        }
+
+        cpuThink() {
+            this.isCpuThinking = true;
+            setTimeout(() => {
+                const moves = this.getValidMoves(WHITE);
+                if (moves.length === 0) {
+                    this.isCpuThinking = false;
+                    this.changeTurn();
+                    return;
+                }
+
+                // AI Strategy
+                const corners = moves.filter(m => (m.r === 0 || m.r === 7) && (m.c === 0 || m.c === 7));
+                let move = corners.length > 0 ? corners[Math.floor(Math.random() * corners.length)] : moves[Math.floor(Math.random() * moves.length)];
+
+                const flipped = this.canPlace(move.r, move.c, WHITE);
+                this.board[move.r][move.c] = WHITE;
+                this.animatePlacement(move.r, move.c);
+                for (const pos of flipped) {
+                    this.board[pos.r][pos.c] = WHITE;
+                }
+
+                this.isCpuThinking = false;
+                this.changeTurn();
+            }, 800);
+        }
+
+        gameOver() {
+            const scores = this.calculateScore();
+            const resultText = document.getElementById('result-text');
+            const resultDetails = document.getElementById('result-details');
+            
+            if (scores.black > scores.white) resultText.innerText = "あなたの勝ち！";
+            else if (scores.white > scores.black) resultText.innerText = "CPUの勝ち！";
+            else resultText.innerText = "引き分け！";
+            
+            resultDetails.innerText = `あなた(黒): ${scores.black} | CPU(白): ${scores.white}`;
+            document.getElementById('overlay').style.display = 'flex';
+        }
+
+        calculateScore() {
+            let black = 0, white = 0;
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (this.board[r][c] === BLACK) black++;
+                    if (this.board[r][c] === WHITE) white++;
+                }
+            }
+            return { black, white };
+        }
+
+        render() {
+            const validMoves = this.getValidMoves(this.turn);
+            const scores = this.calculateScore();
+
+            document.getElementById('black-score').innerText = scores.black;
+            document.getElementById('white-score').innerText = scores.white;
+            
+            const turnDisplay = document.getElementById('turn-display');
+            if (this.turn === BLACK) {
+                turnDisplay.innerText = "あなたの番です";
+                turnDisplay.style.color = "#1d1d1f";
+            } else {
+                turnDisplay.innerText = "CPUが考えています...";
+                turnDisplay.style.color = "#0071e3";
+            }
+
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const { cell, container, piece } = this.cells[r][c];
+                    const val = this.board[r][c];
+
+                    // Update piece visibility and color
+                    if (val === EMPTY) {
+                        container.style.display = 'none';
+                    } else {
+                        container.style.display = 'block';
+                        if (val === WHITE) piece.classList.add('white');
+                        else piece.classList.remove('white');
+                    }
+
+                    // Valid moves
+                    cell.classList.remove('valid-move');
+                    cell.onclick = null;
+                    if (this.turn === BLACK && validMoves.some(m => m.r === r && m.c === c)) {
+                        cell.classList.add('valid-move');
+                        cell.onclick = () => this.handleMove(r, c);
+                    }
+                }
+            }
+        }
+    }
+
+    const game = new Othello();
+</script>
+
+</body>
+</html>
