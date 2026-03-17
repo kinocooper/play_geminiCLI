@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import Cell from './Cell';
-import type { Board as BoardType } from '../gameLogic';
+import type { Board as BoardType } from '../game/core';
 
 interface BoardProps {
   board: BoardType;
@@ -14,9 +14,9 @@ const Board: FC<BoardProps> = ({ board, validMoves, onCellClick }) => {
   };
 
   return (
-    <div className="board">
+    <div className="bg-gray-800 p-2 rounded-lg shadow-2xl border-4 border-gray-700">
       {board.map((row, r) => (
-        <div key={r} className="row">
+        <div key={r} className="flex">
           {row.map((cell, c) => (
             <Cell 
               key={`${r}-${c}`} 
